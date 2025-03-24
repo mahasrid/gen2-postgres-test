@@ -1,0 +1,169 @@
+import React, { useEffect, useState } from 'react';
+import { withAuthenticator, useAuthenticator } from '@aws-amplify/ui-react';
+import { generateClient } from 'aws-amplify/api';
+import { type Schema } from '../amplify/data/resource';
+import '@aws-amplify/ui-react/styles.css';
+
+const client = generateClient<Schema>();
+
+function App() {
+  const { signOut, user } = useAuthenticator();
+  const [sensorData, setSensorData] = useState<Array<Schema["sensor_data_new_tbl"]["type"]>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Schema["sensor_data_new_tbl"]["type"]>>({});
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    try {
+      // Use the correct model name
+      const response = await client.models.sensor_data_new_tbl.list();
+      if (response.errors) {
+        setError('Failed to fetch data');
+        return;
+      }
+      setSensorData(response.data || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleEdit = (item: Schema["sensor_data_new_tbl"]["type"]) => {
+    setEditingId(item.id);
+    setEditForm(item);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      if (!editingId) return;
+
+      const response = await client.models.sensor_data_new_tbl.update({
+        id: editingId,
+        ...editForm
+      });
+
+      if (response.errors) {
+        setError('Failed to update data');
+        return;
+      }
+
+      await fetchData();
+      setEditingId(null);
+      setEditForm({});
+    } catch (err) {
+      setError('Failed to update: ' + err.message);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  if (loading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <header className="header">
+        <div className="header-content">
+          <h1 className="app-title">Sensor Data</h1>
+          <div className="user-info">
+            <span className="username">Welcome, {user?.username}</span>
+            <button onClick={signOut} className="signout-button">Sign Out</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="main-content">
+        <div className="table-container">
+          <table className="sensor-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Topic Sensor</th>
+                <th>Temperature</th>
+                <th>Location</th>
+                <th>System</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(sensorData) && sensorData.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.topicsensor || ''}
+                        onChange={(e) => setEditForm({ ...editForm, topicsensor: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.topicsensor
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="number"
+                        value={editForm.temperature || ''}
+                        onChange={(e) => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.temperature
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.location || ''}
+                        onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.location
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.system || ''}
+                        onChange={(e) => setEditForm({ ...editForm, system: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.system
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <div className="button-group">
+                        <button onClick={handleUpdate} className="save-button">Save</button>
+                        <button onClick={handleCancel} className="cancel-button">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleEdit(item)} className="edit-button">Edit</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default withAuthenticator(App);

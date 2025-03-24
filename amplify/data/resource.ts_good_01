@@ -1,0 +1,94 @@
+import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { schema as generatedSqlSchema } from './schema.sql';
+
+const sqlSchema = generatedSqlSchema
+  .authorization(allow => allow.authenticated())
+  .addToSchema({
+    listSensorData: a.query()
+      .returns(a.ref('SensorData').array())
+      .authorization(allow => allow.authenticated())
+      .handler(a.handler.inlineSql(`
+        SELECT 
+          CAST(id AS INTEGER) as id,
+          topicsensor,
+          CAST(NULLIF(trim(payloadladlength), '')::bigint AS INTEGER) as payloadlength,
+          gatewayid,
+          CAST(NULLIF(trim(binsize), '')::bigint AS INTEGER) as binsize,
+          CAST(NULLIF(trim(fftsize), '')::bigint AS INTEGER) as fftsize,
+          CAST(NULLIF(trim(fftwindow), '')::bigint AS INTEGER) as fftwindow,
+          CAST(NULLIF(trim(g_range), '')::bigint AS INTEGER) as g_range,
+          CAST(NULLIF(trim(precision), '')::bigint AS INTEGER) as precision,
+          CAST(NULLIF(trim(trigger), '')::bigint AS INTEGER) as trigger,
+          CAST(NULLIF(trim(valueoffset), '')::bigint AS INTEGER) as valueoffset,
+          sensornodeid,
+          sourceaddress,
+          CAST(temperature AS FLOAT) as temperature,
+          CAST(NULLIF(trim(timestamp), '')::bigint AS INTEGER) as timestamp,
+          type,
+          CAST(NULLIF(trim(vibration_rms), '')::bigint AS INTEGER) as vibration_rms,
+          application,
+          meas_type,
+          system,
+          equipment_type,
+          location,
+          CAST(NULLIF(trim(temp_hi_limit), '')::bigint AS INTEGER) as temp_hi_limit,
+          CAST(NULLIF(trim(temp_lo_limit), '')::bigint AS INTEGER) as temp_lo_limit,
+          CAST(NULLIF(trim(vib_hi_limit), '')::bigint AS INTEGER) as vib_hi_limit,
+          vib_lo_limit,
+          CAST(NULLIF(trim(vib_spike_limit), '')::bigint AS INTEGER) as vib_spike_limit,
+          CAST(NULLIF(trim(temp_spike_limit), '')::bigint AS INTEGER) as temp_spike_limit,
+          esa_group,
+          paint_shop,
+          paint_area,
+          system_type,
+          node_name
+        FROM sensor_data_new_tbl 
+        ORDER BY timestamp DESC 
+        LIMIT 100;
+      `)),
+
+    SensorData: a.customType({
+      id: a.integer(),
+      topicsensor: a.string(),
+      payloadlength: a.integer(),
+      gatewayid: a.string(),
+      binsize: a.integer(),
+      fftsize: a.integer(),
+      fftwindow: a.integer(),
+      g_range: a.integer(),
+      precision: a.integer(),
+      trigger: a.integer(),
+      valueoffset: a.integer(),
+      sensornodeid: a.string(),
+      sourceaddress: a.string(),
+      temperature: a.float(),
+      timestamp: a.integer(),
+      type: a.string(),
+      vibration_rms: a.integer(),
+      application: a.string(),
+      meas_type: a.string(),
+      system: a.string(),
+      equipment_type: a.string(),
+      location: a.string(),
+      temp_hi_limit: a.integer(),
+      temp_lo_limit: a.integer(),
+      vib_hi_limit: a.integer(),
+      vib_lo_limit: a.string(),
+      vib_spike_limit: a.integer(),
+      temp_spike_limit: a.integer(),
+      esa_group: a.string(),
+      paint_shop: a.string(),
+      paint_area: a.string(),
+      system_type: a.string(),
+      node_name: a.string()
+    })
+  });
+
+export type Schema = ClientSchema<typeof sqlSchema>;
+
+export const data = defineData({
+  schema: sqlSchema,
+  authorizationModes: {
+    defaultAuthorizationMode: 'userPool',
+  },
+});

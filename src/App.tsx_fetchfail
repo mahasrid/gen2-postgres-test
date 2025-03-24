@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react"
+import { Amplify } from 'aws-amplify'
+import outputs from '../amplify_outputs.json'
+import { useAuthenticator } from '@aws-amplify/ui-react'
+import { type Schema } from '../amplify/data/resource'
+import { generateClient } from "aws-amplify/api"
+
+Amplify.configure(outputs)
+
+const client = generateClient<Schema>();
+
+function App() {
+  const { signOut } = useAuthenticator();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { data, errors } = await client.queries.listSensorData()
+        
+        if (errors) {
+          console.error('API Errors:', errors);
+          setError('Failed to fetch data');
+          return;
+        }
+
+        console.log('Fetched data:', data);
+        setSensorData(data);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <main className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Sensor Data</h1>
+        <div>
+          <span className="mr-4">Welcome, {user?.username}</span>
+          <button 
+            onClick={signOut}
+            className="bg-red-500 text-white px-4 py-2 rounded"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="px-4 py-2 border">ID</th>
+              <th className="px-4 py-2 border">Topic Sensor</th>
+              <th className="px-4 py-2 border">Temperature</th>
+              <th className="px-4 py-2 border">Vibration RMS</th>
+              <th className="px-4 py-2 border">Location</th>
+              <th className="px-4 py-2 border">System</th>
+              <th className="px-4 py-2 border">Equipment Type</th>
+              <th className="px-4 py-2 border">Node Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sensorData.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border">{item.id}</td>
+                <td className="px-4 py-2 border">{item.topicsensor}</td>
+                <td className="px-4 py-2 border">{item.temperature}</td>
+                <td className="px-4 py-2 border">{item.vibration_rms}</td>
+                <td className="px-4 py-2 border">{item.location}</td>
+                <td className="px-4 py-2 border">{item.system}</td>
+                <td className="px-4 py-2 border">{item.equipment_type}</td>
+                <td className="px-4 py-2 border">{item.node_name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
+}
+
+export default App;

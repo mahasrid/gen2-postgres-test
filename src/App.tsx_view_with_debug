@@ -1,0 +1,97 @@
+import { useEffect, useState } from "react";
+import { withAuthenticator, useAuthenticator } from '@aws-amplify/ui-react';
+import { generateClient } from 'aws-amplify/api';
+import { type Schema } from '../amplify/data/resource';
+import '@aws-amplify/ui-react/styles.css';
+
+const client = generateClient<Schema>();
+
+function App() {
+  const { signOut, user } = useAuthenticator();
+  const [sensorData, setSensorData] = useState<Array<Schema["SensorData"]["type"]>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>("");
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await client.queries.listSensorData();
+        console.log('Full response:', response); // Debug log
+        console.log('Response data:', response.data); // Debug log
+
+        setDebugInfo(JSON.stringify(response.data, null, 2)); // Set debug info
+
+        if (response.errors) {
+          console.error('API Errors:', response.errors);
+          setError('Failed to fetch data');
+          return;
+        }
+
+        // Check the actual structure of the response
+        const sensorDataArray = Array.isArray(response.data) 
+          ? response.data 
+          : response.data?.listSensorData || [];
+
+        console.log('Data to be set:', sensorDataArray); // Debug log
+
+        setSensorData(sensorDataArray);
+      } catch (err) {
+        console.error('Error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  // Debug log
+  console.log('Current sensor data:', sensorData);
+
+  return (
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1>Sensor Data</h1>
+        <button onClick={signOut}>Sign Out</button>
+      </div>
+
+      {/* Debug info */}
+      <div className="mb-4">
+        <h2>Debug Info:</h2>
+        <pre className="bg-gray-100 p-2 mt-2 overflow-auto max-h-40">
+          {debugInfo}
+        </pre>
+      </div>
+
+      <table className="min-w-full">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Topic Sensor</th>
+            <th>Temperature</th>
+            <th>Location</th>
+            <th>System</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(sensorData) && sensorData.map((item) => (
+            <tr key={item.id}>
+              <td>{item.id}</td>
+              <td>{item.topicsensor}</td>
+              <td>{item.temperature}</td>
+              <td>{item.location}</td>
+              <td>{item.system}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export default withAuthenticator(App);
