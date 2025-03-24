@@ -3,27 +3,6 @@ import { withAuthenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/api';
 import { type Schema } from '../amplify/data/resource';
 import '@aws-amplify/ui-react/styles.css';
-import './App.css';
-
-// Icons (you can use react-icons library)
-const EditIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-  </svg>
-);
-
-const LoadingSpinner = () => (
-  <div className="loading-spinner">
-    <div className="spinner"></div>
-  </div>
-);
-
-const ErrorMessage = ({ message }: { message: string }) => (
-  <div className="error-message">
-    <strong>Error: </strong>
-    {message}
-  </div>
-);
 
 const client = generateClient<Schema>();
 
@@ -34,26 +13,36 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Schema["sensor_data_new_tbl"]["type"]>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const response = await client.models.sensor_data_new_tbl.list();
+      console.log('Fetch response:', response); // Debug log
       
       if (response.errors) {
-        throw new Error('Failed to fetch data');
+        console.error('Fetch errors:', response.errors);
+        setError('Failed to fetch data');
+        return;
       }
 
       const sortedData = [...(response.data || [])].sort((a, b) => {
+        // Ensure we're comparing numbers, including 0
         const idA = Number(a.id);
         const idB = Number(b.id);
-        return (isNaN(idA) || isNaN(idB)) ? 0 : idA - idB;
+        // Check if either value is NaN
+        if (isNaN(idA)) return 1;  // Move invalid values to the end
+        if (isNaN(idB)) return -1; // Move invalid values to the end
+        return idA - idB;  // Normal comparison including 0
       });
       
+      console.log('Sorted data:', sortedData); // Debug log to see all IDs
+
+      
       setSensorData(sortedData);
+      
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -73,6 +62,8 @@ function App() {
     try {
       if (!editingId) return;
 
+      console.log('Updating with data:', editForm);
+
       const updateData = {
         id: editingId,
         topicsensor: editForm.topicsensor,
@@ -81,190 +72,137 @@ function App() {
         system: editForm.system
       };
 
-      const response = await client.models.sensor_data_new_tbl.update(updateData);
-      
+      const response = await client.models.sensor_data_new_tbl.update(updatdateData);
+      console.log('Update response:', response);
+
       if (response.errors) {
-        throw new Error('Failed to update data');
+        console.error('Update errors:', response.errors);
+        setError('Failed to update data');
+        return;
       }
 
+      // Reset edit state
       setEditingId(null);
       setEditForm({});
+
+      // Immediate update in the UI
+      setSensorData(prevData => 
+        prevData.map(item => 
+          item.id === editingId ? { ...item, ...updateData } : item
+        )
+      );
+
+      // Fetch fresh data from server
       await fetchData();
-      
+
     } catch (err) {
-      setError(`Update failed: ${err.message}`);
+      console.error('Update error:', err);
+      setError('Failed to update: ' + err.message);
     }
   };
 
-  const filteredData = sensorData.filter(item =>
-    Object.values(item).some(value =>
-      value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
-  const handleSort = (key: string) => {
-    setSortConfig(current => ({
-      key,
-      direction: current?.key === key && current.direction === 'asc' ? 'desc' : 'asc'
-    }));
+  const handleCancel = () => {
+    setEditingId(null);
+    setEditForm({});
   };
 
-  const sortedData = [...filteredData].sort((a, b) => {
-    if (!sortConfig) return 0;
-    
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-    
-    if (sortConfig.direction === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    }
-    return aValue < bValue ? 1 : -1;
-  });
+  if (loading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
 
+  // Rest of your JSX remains the same
   return (
-    <div className="dashboard-container">
-      <nav className="navbar">
-        <div className="navbar-content">
-          <div className="navbar-left">
-            <h1 className="dashboard-title">Sensor Dashboard</h1>
-          </div>
-          <div className="navbar-right">
-            <div className="user-info">
-              <span className="username">{user?.username}</span>
-              <button onClick={signOut} className="signout-button">
-                Sign Out
-              </button>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <header className="header">
+        <div className="header-content">
+          <h1 className="app-title">Sensor Data</h1>
+          <div className="user-info">
+            <span className="username">Welcome, {user?.username}</span>
+            <button onClick={signOut} className="signout-button">Sign Out</button>
           </div>
         </div>
-      </nav>
+      </header>
 
       <main className="main-content">
-        <div className="controls-section">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-        </div>
-
-        <div className="data-card">
-          {loading ? (
-            <LoadingSpinner />
-          ) : error ? (
-            <ErrorMessage message={error} />
-          ) : (
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort('id')} className="sortable-header">
-                      ID {sortConfig?.key === 'id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('topicsensor')} className="sortable-header">
-                      Sensor {sortConfig?.key === 'topicsensor' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('temperature')} className="sortable-header">
-                      Temperature {sortConfig?.key === 'temperature' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('location')} className="sortable-header">
-                      Location {sortConfig?.key === 'location' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('system')} className="sortable-header">
-                      System {sortConfig?.key === 'system' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedData.map((item) => (
-                    <tr key={item.id} className="data-row">
-                      <td className="data-cell">{item.id}</td>
-                      <td className="data-cell">{item.topicsensor}</td>
-                      <td className="data-cell temperature">
-                        {item.temperature}°C
-                      </td>
-                      <td className="data-cell">{item.location}</td>
-                      <td className="data-cell">{item.system}</td>
-                      <td className="data-cell actions">
-                        <button 
-                          onClick={() => handleEdit(item)}
-                          className="edit-button"
-                          aria-label="Edit"
-                        >
-                          <EditIcon />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="table-container">
+          <table className="sensor-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Topic Sensor</th>
+                <th>Temperature</th>
+                <th>Location</th>
+                <th>System</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(sensorData) && sensorData.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.topicsensor || ''}
+                        onChange={(e) => setEditForm({ ...editForm, topicsensor: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.topicsensor
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="number"
+                        value={editForm.temperature || ''}
+                        onChange={(e) => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.temperature
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.location || ''}
+                        onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.location
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <input
+                        type="text"
+                        value={editForm.system || ''}
+                        onChange={(e) => setEditForm({ ...editForm, system: e.target.value })}
+                        className="edit-input"
+                      />
+                    ) : (
+                      item.system
+                    )}
+                  </td>
+                  <td>
+                    {editingId === item.id ? (
+                      <div className="button-group">
+                        <button onClick={handleUpdate} className="save-button">Save</button>
+                        <button onClick={handleCancel} className="cancel-button">Cancel</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleEdit(item)} className="edit-button">Edit</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </main>
-
-      {editingId && (
-        <div className="modal-overlay" onClick={() => setEditingId(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h2 className="modal-title">Edit Sensor Data</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="topicsensor">Sensor Name</label>
-                <input
-                  id="topicsensor"
-                  type="text"
-                  value={editForm.topicsensor || ''}
-                  onChange={(e) => setEditForm({ ...editForm, topicsensor: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="temperature">Temperature</label>
-                <input
-                  id="temperature"
-                  type="number"
-                  value={editForm.temperature || ''}
-                  onChange={(e) => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
-                  className="input-field"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="location">Location</label>
-                <input
-                  id="location"
-                  type="text"
-                  value={editForm.location || ''}
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="system">System</label>
-                <input
-                  id="system"
-                  type="text"
-                  value={editForm.system || ''}
-                  onChange={(e) => setEditForm({ ...editForm, system: e.target.value })}
-                  className="input-field"
-                />
-              </div>
-            </div>
-            <div className="button-group">
-              <button onClick={() => setEditingId(null)} className="cancel-button">
-                Cancel
-              </button>
-              <button onClick={handleUpdate} className="save-button">
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
