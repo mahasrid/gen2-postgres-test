@@ -4,21 +4,24 @@ import { generateClient } from 'aws-amplify/api';
 import { type Schema } from '../amplify/data/resource';
 import '@aws-amplify/ui-react/styles.css';
 
+type SensorDataType = Schema["sensor_data_new_tbl"]["type"];
+type Nullable<T> = T | null;
+
 const client = generateClient<Schema>();
 
 function App() {
   const { signOut, user } = useAuthenticator();
-  const [sensorData, setSensorData] = useState<Array<Schema["sensor_data_new_tbl"]["type"]>>([]);
+  const [sensorData, setSensorData] = useState<SensorDataType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Schema["sensor_data_new_tbl"]["type"]>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<SensorDataType>>({});
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const response = await client.models.sensor_data_new_tbl.list();
-      console.log('Fetch response:', response); // Debug log
+      console.log('Fetch response:', response);
       
       if (response.errors) {
         console.error('Fetch errors:', response.errors);
@@ -27,23 +30,19 @@ function App() {
       }
 
       const sortedData = [...(response.data || [])].sort((a, b) => {
-        // Ensure we're comparing numbers, including 0
-        const idA = Number(a.id);
-        const idB = Number(b.id);
-        // Check if either value is NaN
-        if (isNaN(idA)) return 1;  // Move invalid values to the end
-        if (isNaN(idB)) return -1; // Move invalid values to the end
-        return idA - idB;  // Normal comparison including 0
+        const idA = typeof a.id === 'string' ? parseInt(a.id, 10) : a.id;
+        const idB = typeof b.id === 'string' ? parseInt(b.id, 10) : b.id;
+        if (isNaN(idA)) return 1;
+        if (isNaN(idB)) return -1;
+        return idA - idB;
       });
       
-      console.log('Sorted data:', sortedData); // Debug log to see all IDs
-
-      
+      console.log('Sorted data:', sortedData);
       setSensorData(sortedData);
       
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Fetch error:', err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -53,8 +52,8 @@ function App() {
     fetchData();
   }, []);
 
-  const handleEdit = (item: Schema["sensor_data_new_tbl"]["type"]) => {
-    setEditingId(item.id);
+  const handleEdit = (item: SensorDataType) => {
+    setEditingId(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id);
     setEditForm(item);
   };
 
@@ -64,15 +63,19 @@ function App() {
 
       console.log('Updating with data:', editForm);
 
-      const updateData = {
+      const updateData: SensorDataType = {
         id: editingId,
-        topicsensor: editForm.topicsensor,
-        temperature: Number(editForm.temperature),
-        location: editForm.location,
-        system: editForm.system
+        topicsensor: editForm.topicsensor || null,
+        temperature: Number(editForm.temperature) || 0,
+        location: editForm.location || null,
+        system: editForm.system || null,
+        // Add all other required fields with default values
+        payloadlength: null,
+        timestamp_mess_rcvd: null,
+        // ... add other required fields based on your Schema
       };
 
-      const response = await client.models.sensor_data_new_tbl.update(updatdateData);
+      const response = await client.models.sensor_data_new_tbl.update(updateData);
       console.log('Update response:', response);
 
       if (response.errors) {
@@ -81,23 +84,22 @@ function App() {
         return;
       }
 
-      // Reset edit state
       setEditingId(null);
       setEditForm({});
 
-      // Immediate update in the UI
       setSensorData(prevData => 
         prevData.map(item => 
-          item.id === editingId ? { ...item, ...updateData } : item
+          (typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId 
+            ? { ...item, ...updateData } 
+            : item
         )
       );
 
-      // Fetch fresh data from server
       await fetchData();
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Update error:', err);
-      setError('Failed to update: ' + err.message);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     }
   };
 
@@ -109,9 +111,9 @@ function App() {
   if (loading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error">Error: {error}</div>;
 
-  // Rest of your JSX remains the same
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header section */}
       <header className="header">
         <div className="header-content">
           <h1 className="app-title">Sensor Data</h1>
@@ -122,6 +124,7 @@ function App() {
         </div>
       </header>
 
+      {/* Main content */}
       <main className="main-content">
         <div className="table-container">
           <table className="sensor-table">
@@ -140,7 +143,7 @@ function App() {
                 <tr key={item.id}>
                   <td>{item.id}</td>
                   <td>
-                    {editingId === item.id ? (
+                    {(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId ? (
                       <input
                         type="text"
                         value={editForm.topicsensor || ''}
@@ -152,7 +155,7 @@ function App() {
                     )}
                   </td>
                   <td>
-                    {editingId === item.id ? (
+                    {(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId ? (
                       <input
                         type="number"
                         value={editForm.temperature || ''}
@@ -164,7 +167,7 @@ function App() {
                     )}
                   </td>
                   <td>
-                    {editingId === item.id ? (
+                    {(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId ? (
                       <input
                         type="text"
                         value={editForm.location || ''}
@@ -176,7 +179,7 @@ function App() {
                     )}
                   </td>
                   <td>
-                    {editingId === item.id ? (
+                    {(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId ? (
                       <input
                         type="text"
                         value={editForm.system || ''}
@@ -188,7 +191,7 @@ function App() {
                     )}
                   </td>
                   <td>
-                    {editingId === item.id ? (
+                    {(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id) === editingId ? (
                       <div className="button-group">
                         <button onClick={handleUpdate} className="save-button">Save</button>
                         <button onClick={handleCancel} className="cancel-button">Cancel</button>
