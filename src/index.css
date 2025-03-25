@@ -8,6 +8,7 @@ body {
   justify-content: center;
   align-items: center;
 }
+/* to start and */
 
 main {
   display: flex;
@@ -49,6 +50,8 @@ ul {
   border-radius: 8px;
   overflow: auto;
 }
+
+
 
 li {
   background-color: white;

@@ -4,7 +4,7 @@ import { generateClient } from 'aws-amplify/api';
 import { type Schema } from '../amplify/data/resource';
 import '@aws-amplify/ui-react/styles.css';
 import { Button, Flex, Heading, View, TextField } from "@aws-amplify/ui-react";
-
+//test
 type SensorDataType = Schema["sensor_data_new_tbl"]["type"];
 
 const client = generateClient<Schema>();
