@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { withAuthenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/api';
 import { type Schema } from '../amplify/data/resource';
 import '@aws-amplify/ui-react/styles.css';
 
 type SensorDataType = Schema["sensor_data_new_tbl"]["type"];
-type Nullable<T> = T | null;
 
 const client = generateClient<Schema>();
 
