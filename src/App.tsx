@@ -56,19 +56,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <header className="w-full max-w-4xl bg-white shadow-md p-4 flex justify-between items-center rounded-lg">
-        <h1 className="text-2xl font-semibold">Sensor Data</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-600">Welcome, {user?.username}</span>
+      <header className="w-full max-w-4xl bg-white shadow-md p-4 flex flex-col sm:flex-row justify-between items-center rounded-lg">
+        <h1 className="text-2xl font-semibold text-center sm:text-left">Sensor Data</h1>
+        <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 sm:mt-0">
+          <span className="text-gray-600 text-center sm:text-left">Welcome, {user?.username}</span>
           <button onClick={signOut} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Sign Out</button>
         </div>
       </header>
       
-      <main className="w-full max-w-4xl bg-white mt-6 p-4 rounded-lg shadow-md">
+      <main className="w-full max-w-4xl bg-white mt-6 p-4 rounded-lg shadow-md overflow-x-auto">
         {loading && <p className="text-center text-gray-500">Loading...</p>}
         {error && <p className="text-center text-red-500">Error: {error}</p>}
         
-        <table className="w-full border-collapse border border-gray-200 mt-4">
+        <table className="w-full border-collapse border border-gray-200 mt-4 text-sm sm:text-base">
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-2">ID</th>
@@ -113,7 +113,7 @@ function App() {
                 </td>
                 <td className="border p-2">
                   {editingId === item.id ? (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <button onClick={handleUpdate} className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Save</button>
                       <button onClick={() => setEditingId(null)} className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
                     </div>
