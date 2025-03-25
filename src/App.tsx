@@ -3,6 +3,7 @@ import { withAuthenticator, useAuthenticator } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/api';
 import { type Schema } from '../amplify/data/resource';
 import '@aws-amplify/ui-react/styles.css';
+import { Button, Flex, Heading, View, TextField } from "@aws-amplify/ui-react";
 
 type SensorDataType = Schema["sensor_data_new_tbl"]["type"];
 
@@ -37,7 +38,7 @@ function App() {
   }, []);
 
   const handleEdit = (item: SensorDataType) => {
-    setEditingId(typeof item.id === 'string' ? parseInt(item.id, 10) : item.id);
+    setEditingId(item.id as number);
     setEditForm(item);
   };
 
@@ -55,78 +56,62 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <header className="w-full max-w-4xl bg-white shadow-md p-4 flex flex-col sm:flex-row justify-between items-center rounded-lg">
-        <h1 className="text-2xl font-semibold text-center sm:text-left">Sensor Data</h1>
-        <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 sm:mt-0">
-          <span className="text-gray-600 text-center sm:text-left">Welcome, {user?.username}</span>
-          <button onClick={signOut} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Sign Out</button>
-        </div>
-      </header>
+    <View padding="1rem">
+      <Flex direction="column" alignItems="center">
+        <Heading level={1}>Sensor Data</Heading>
+        <Flex justifyContent="space-between" width="100%" maxWidth="800px" alignItems="center">
+          <span>Welcome, {user?.username}</span>
+          <Button onClick={signOut} variation="primary">Sign Out</Button>
+        </Flex>
+      </Flex>
       
-      <main className="w-full max-w-4xl bg-white mt-6 p-4 rounded-lg shadow-md overflow-x-auto">
-        {loading && <p className="text-center text-gray-500">Loading...</p>}
-        {error && <p className="text-center text-red-500">Error: {error}</p>}
-        
-        <table className="w-full border-collapse border border-gray-200 mt-4 text-sm sm:text-base">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2">ID</th>
-              <th className="border p-2">Topic Sensor</th>
-              <th className="border p-2">Temperature</th>
-              <th className="border p-2">Location</th>
-              <th className="border p-2">System</th>
-              <th className="border p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sensorData.map((item) => (
-              <tr key={item.id} className="text-center border">
-                <td className="border p-2">{item.id}</td>
-                <td className="border p-2">
-                  {editingId === item.id ? (
-                    <input type="text" value={editForm.topicsensor || ''} 
-                      onChange={(e) => setEditForm({ ...editForm, topicsensor: e.target.value })}
-                      className="border p-1 w-full" />
-                  ) : (item.topicsensor)}
-                </td>
-                <td className="border p-2">
-                  {editingId === item.id ? (
-                    <input type="number" value={editForm.temperature || ''} 
-                      onChange={(e) => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
-                      className="border p-1 w-full" />
-                  ) : (item.temperature)}
-                </td>
-                <td className="border p-2">
-                  {editingId === item.id ? (
-                    <input type="text" value={editForm.location || ''} 
-                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                      className="border p-1 w-full" />
-                  ) : (item.location)}
-                </td>
-                <td className="border p-2">
-                  {editingId === item.id ? (
-                    <input type="text" value={editForm.system || ''} 
-                      onChange={(e) => setEditForm({ ...editForm, system: e.target.value })}
-                      className="border p-1 w-full" />
-                  ) : (item.system)}
-                </td>
-                <td className="border p-2">
-                  {editingId === item.id ? (
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button onClick={handleUpdate} className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">Save</button>
-                      <button onClick={() => setEditingId(null)} className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => handleEdit(item)} className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">Edit</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </main>
-    </div>
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+      
+      <ul style={{ listStyleType: 'none', padding: 0 }}>
+        {sensorData.map((item) => (
+          <li key={item.id} style={{ borderBottom: '1px solid #ccc', padding: '10px' }}>
+            <Flex direction="column" gap="0.5rem">
+              <strong>ID:</strong> {item.id}
+              <strong>Topic Sensor:</strong>
+              {editingId === item.id ? (
+                <TextField value={editForm.topicsensor || ''} onChange={(e) => setEditForm({ ...editForm, topicsensor: e.target.value })} />
+              ) : (
+                item.topicsensor
+              )}
+              <strong>Temperature:</strong>
+              {editingId === item.id ? (
+                <TextField type="number" value={editForm.temperature || ''} onChange={(e) => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })} />
+              ) : (
+                item.temperature
+              )}
+              <strong>Location:</strong>
+              {editingId === item.id ? (
+                <TextField value={editForm.location || ''} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
+              ) : (
+                item.location
+              )}
+              <strong>System:</strong>
+              {editingId === item.id ? (
+                <TextField value={editForm.system || ''} onChange={(e) => setEditForm({ ...editForm, system: e.target.value })} />
+              ) : (
+                item.system
+              )}
+              <Flex gap="0.5rem">
+                {editingId === item.id ? (
+                  <>
+                    <Button onClick={handleUpdate} variation="primary">Save</Button>
+                    <Button onClick={() => setEditingId(null)} variation="link">Cancel</Button>
+                  </>
+                ) : (
+                  <Button onClick={() => handleEdit(item)} variation="secondary">Edit</Button>
+                )}
+              </Flex>
+            </Flex>
+          </li>
+        ))}
+      </ul>
+    </View>
   );
 }
 
